@@ -15,6 +15,13 @@ Ultralytics YOLO11を使用した手のキーポイント推定モデルの学�
 pip install -r requirements.txt
 ```
 
+# training
+python train_hand_keypoints.py --config configs/hand_keypoints.yaml   
+
+# detection
+python webcam_inference.py --model runs/pose/hand_keypoints/weights/best.pt
+
+
 ## 使用方法
 
 ### 1. モデルの学習
