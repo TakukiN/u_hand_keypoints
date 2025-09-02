@@ -84,7 +84,6 @@ def create_training_config():
         'mixup': 0.0,             # ミックスアップ
         
         # ポーズ推定特有の設定
-        'kpt_label': True,        # キーポイントラベル
         'conf': 0.001,            # 信頼度閾値
         'iou': 0.6,               # IoU閾値
         'max_det': 300,           # 最大検出数
@@ -137,57 +136,88 @@ def prepare_dataset_structure():
     print(f"  - 画像: {dataset_path}/images/")
     print(f"  - ラベル: {dataset_path}/labels/")
 
-def train_model():
+def train_model(config_file=None):
     """モデルの学習を実行"""
     print("手のキーポイント推定モデルの学習を開始します...")
     
-    # 設定ファイルを作成
-    dataset_config = create_dataset_config()
-    train_config = create_training_config()
-    
-    # データセット構造を準備
-    prepare_dataset_structure()
-    
-    # YOLOモデルを初期化
-    model = YOLO('yolo11n-pose.pt')
-    
-    print(f"データセット設定: {dataset_config}")
-    print(f"学習設定: {train_config}")
-    print("\n学習を開始する前に、データセットを適切に配置してください。")
-    print("学習を開始しますか？ (y/n): ", end="")
-    
-    # ユーザー確認
-    response = input().lower().strip()
-    if response != 'y':
-        print("学習をキャンセルしました。")
-        return
-    
-    try:
-        # モデルの学習を実行
-        print("\n学習を開始します...")
-        results = model.train(
-            data=dataset_config,
-            cfg=train_config,
-            epochs=100,
-            imgsz=640,
-            batch=16,
-            device='auto'
-        )
+    if config_file:
+        # 指定された設定ファイルを読み込む
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
         
-        print("学習が完了しました！")
-        print(f"結果は {results.save_dir} に保存されました。")
+        # YOLOモデルを初期化
+        model_path = config.get('model', 'yolo11n-pose.pt')
+        model = YOLO(model_path)
         
-        # 学習結果の表示
-        print("\n学習結果:")
-        print(f"最終mAP: {results.results_dict.get('metrics/mAP50(B)', 'N/A')}")
-        print(f"最終mAP50-95: {results.results_dict.get('metrics/mAP50-95(B)', 'N/A')}")
+        print(f"設定ファイル: {config_file}")
+        print(f"データセット: {config.get('data')}")
+        print(f"エポック数: {config.get('epochs')}")
+        print(f"バッチサイズ: {config.get('batch')}")
         
-    except Exception as e:
-        print(f"学習中にエラーが発生しました: {e}")
-        print("データセットの設定とデータの配置を確認してください。")
+        try:
+            # モデルの学習を実行
+            print("\n学習を開始します...")
+            results = model.train(**config)
+            
+            print("学習が完了しました！")
+            print(f"結果は {results.save_dir} に保存されました。")
+            
+        except Exception as e:
+            print(f"学習中にエラーが発生しました: {e}")
+            print("データセットの設定とデータの配置を確認してください。")
+    else:
+        # 設定ファイルを作成
+        dataset_config = create_dataset_config()
+        train_config = create_training_config()
+        
+        # データセット構造を準備
+        prepare_dataset_structure()
+        
+        # YOLOモデルを初期化
+        model = YOLO('yolo11n-pose.pt')
+        
+        print(f"データセット設定: {dataset_config}")
+        print(f"学習設定: {train_config}")
+        print("\n学習を開始する前に、データセットを適切に配置してください。")
+        print("学習を開始しますか？ (y/n): ", end="")
+        
+        # ユーザー確認
+        response = input().lower().strip()
+        if response != 'y':
+            print("学習をキャンセルしました。")
+            return
+        
+        try:
+            # モデルの学習を実行
+            print("\n学習を開始します...")
+            results = model.train(
+                data=dataset_config,
+                cfg=train_config,
+                epochs=100,
+                imgsz=640,
+                batch=16,
+                device='auto'
+            )
+            
+            print("学習が完了しました！")
+            print(f"結果は {results.save_dir} に保存されました。")
+            
+            # 学習結果の表示
+            print("\n学習結果:")
+            print(f"最終mAP: {results.results_dict.get('metrics/mAP50(B)', 'N/A')}")
+            print(f"最終mAP50-95: {results.results_dict.get('metrics/mAP50-95(B)', 'N/A')}")
+            
+        except Exception as e:
+            print(f"学習中にエラーが発生しました: {e}")
+            print("データセットの設定とデータの配置を確認してください。")
 
 def main():
     """メイン関数"""
+    import argparse
+    parser = argparse.ArgumentParser(description='手のキーポイント推定モデルの学習')
+    parser.add_argument('--config', type=str, help='設定ファイルのパス')
+    args = parser.parse_args()
+    
     print("=" * 60)
     print("手のキーポイント推定モデル学習システム")
     print("=" * 60)
@@ -199,7 +229,7 @@ def main():
     os.makedirs('./runs', exist_ok=True)
     
     # 学習を実行
-    train_model()
+    train_model(args.config)
 
 if __name__ == "__main__":
     main()
